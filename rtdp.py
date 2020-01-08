@@ -1,15 +1,38 @@
 import aid_gym
 import numpy as np
 import ipdb
+import cv2
+
+def display_map(start_state,goal_state):
+    start = start_state/5
+    start = start.astype(int)
+    goal = goal_state/5
+    goal = goal.astype(int)
+    image_location = "assets/island.png"
+    img = cv2.imread(image_location)
+    cv2.circle(img,(start[1], start[0]), 1, (255,0,0), -1)
+    cv2.circle(img,(goal[1], goal[0]), 1, (0,255,0), -1)
+    cv2.imshow("Final_Map", img)
+    cv2.waitKey(0)
 
 env = aid_gym.IslandEnv()
 env.reset()
 
 start_state = env.s
+count = 0
+while(True):
+    env.s_goal = env.s + np.array([-20,20+count])
+    if(not env._isValidPosition(env.s_goal)):
+        count+=1
+    else:
+        break
 goal_state = env.s_goal
+
+display_map(start_state,goal_state)
 
 print(env.MAP_SIZE)
 print("start_state is: ",start_state,"\t","Goal State: ",goal_state)
+ipdb.set_trace()
 # V_table = np.zeros((env.MAP_SIZE, env.MAP_SIZE))
 # obstacle_table = np.full((env.MAP_SIZE,env.MAP_SIZE), False, dtype=bool)
 
@@ -36,9 +59,9 @@ V_table = np.load('initially_modified_v_table.npy')
 
 V_table[goal_state[0]][goal_state[1]] = 1000
 
-MAXIMUM_EPSIODE_LENGTH  = 2*int(np.linalg.norm(start_state-goal_state))
+MAXIMUM_EPSIODE_LENGTH  = 10*int(np.linalg.norm(start_state-goal_state))
 print("MAXIMUM_EPSIODE_LENGTH: ",MAXIMUM_EPSIODE_LENGTH)
-MAX_EPISODES = 10
+MAX_EPISODES = 1000
 HAS_CONVERGED = False
 GAMMA = 1
 
@@ -54,9 +77,11 @@ if(np.array_equal(start_state, goal_state)):
 
 num_episodes=0
 while(num_episodes<MAX_EPISODES):
-    episode_length = 0
     num_episodes+=1
     print("Episode: ",num_episodes)
+    episode_length = 0
+    curr_state = start_state
+    done = False
     while(not done and episode_length<MAXIMUM_EPSIODE_LENGTH):
         max_Q = -float('Inf')
         for elt in range(len(dirX)):
@@ -74,8 +99,13 @@ while(num_episodes<MAX_EPISODES):
             break
 
         V_table[curr_state[0]][curr_state[1]] = max_Q
-        # print(max_Q)
-        curr_state = best_next_state
+
+        if np.random.rand() <= success_prob:
+            curr_state = best_next_state
+
+        if(np.array_equal(curr_state, goal_state)):
+            print("Goal reached!!!!!")
+            done = True
         episode_length+=1
 
 print("Training complete!")
@@ -92,6 +122,7 @@ while not done:
         if(V_table[s_[0]][s_[1]]>best_V_val):
             best_action = action
             best_V_val = V_table[s_[0]][s_[1]]
+        # ipdb.set_trace()
 
     if(not best_V_val>-float('Inf')):
         print("No Route to goal exists")
@@ -99,7 +130,7 @@ while not done:
         next_state, reward, done, info = env.step(best_action) 
         print("Next state is: ",next_state[:2],"\t","Present_state is: ",curr_state,"\t Action is: ",best_action)
 
-    if(done and next_state[2:] == goal_state):
+    if(done and np.array_equal(next_state[2:], goal_state)):
         print("Path to goal found. Goal reached successfully")
     elif(done):
         print("Robot fell into water")
