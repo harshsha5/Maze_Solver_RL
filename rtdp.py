@@ -21,14 +21,14 @@ env.reset()
 start_state = env.s
 count = 0
 while(True):
-    env.s_goal = env.s + np.array([-20,20+count])
+    env.s_goal = env.s + np.array([-100,80+count])
     if(not env._isValidPosition(env.s_goal)):
         count+=1
     else:
         break
 goal_state = env.s_goal
 
-display_map(start_state,goal_state)
+# display_map(start_state,goal_state)
 
 print(env.MAP_SIZE)
 print("start_state is: ",start_state,"\t","Goal State: ",goal_state)
@@ -61,9 +61,10 @@ V_table[goal_state[0]][goal_state[1]] = 1000
 
 MAXIMUM_EPSIODE_LENGTH  = 10*int(np.linalg.norm(start_state-goal_state))
 print("MAXIMUM_EPSIODE_LENGTH: ",MAXIMUM_EPSIODE_LENGTH)
-MAX_EPISODES = 1000
+MAX_EPISODES = 10000
 HAS_CONVERGED = False
-GAMMA = 1
+GAMMA = 0.95
+ERROR_THRESHOLD = 0.9
 
 dirX = [-1,-1,-1,0,0,1,1,1]
 dirY = [-1,0,1,-1,1,-1,0,1]
@@ -82,6 +83,7 @@ while(num_episodes<MAX_EPISODES):
     episode_length = 0
     curr_state = start_state
     done = False
+    HAS_CONVERGED = True
     while(not done and episode_length<MAXIMUM_EPSIODE_LENGTH):
         max_Q = -float('Inf')
         for elt in range(len(dirX)):
@@ -98,7 +100,11 @@ while(num_episodes<MAX_EPISODES):
             print("No path exists")
             break
 
+        old_Q = V_table[curr_state[0]][curr_state[1]]
         V_table[curr_state[0]][curr_state[1]] = max_Q
+
+        if(HAS_CONVERGED and abs(V_table[curr_state[0]][curr_state[1]]-old_Q)>ERROR_THRESHOLD):
+            HAS_CONVERGED = False
 
         if np.random.rand() <= success_prob:
             curr_state = best_next_state
@@ -107,6 +113,10 @@ while(num_episodes<MAX_EPISODES):
             print("Goal reached!!!!!")
             done = True
         episode_length+=1
+
+    if(HAS_CONVERGED):
+        print("Convergence of value function has been achieved already")
+        break
 
 print("Training complete!")
 ipdb.set_trace()
